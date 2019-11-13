@@ -1,17 +1,19 @@
 import json
 import pathlib
-import datetime
 
+from integrations import cpr_mapper
 from os2mo_data_import import ImportHelper
-from integrations.SD_Lon.sd_importer import SdImport
+from integrations.SD_Lon import sd_importer
 
-
-cfg_file = pathlib.Path.cwd() / 'settings' / 'kommune-brøndby.json'
+cfg_file = pathlib.Path.cwd() / 'settings' / 'settings.json'
 if not cfg_file.is_file():
     raise Exception('No setting file')
 settings = json.loads(cfg_file.read_text())
 
-GLOBAL_GET_DATE = datetime.datetime(2019, 9, 15, 0, 0)
+cpr_map = pathlib.Path.cwd() / 'settings' / 'cpr_uuid_map.csv'
+if not cpr_map.is_file():
+    raise Exception('No mapping file')
+employee_mapping = cpr_mapper.employee_mapper(str(cpr_map))
 
 importer = ImportHelper(
     create_defaults=True,
@@ -21,16 +23,16 @@ importer = ImportHelper(
     seperate_names=True
 )
 
-sd = SdImport(
+sd = sd_importer.SdImport(
     importer,
-    settings=settings,
-    import_date_from=GLOBAL_GET_DATE,
     ad_info=None,
     manager_rows=[],
-    org_only=True
+    employee_mapping=employee_mapping,
+    org_only=False
 )
 
+
 sd.create_ou_tree(create_orphan_container=True)
-# sd.create_employees()
+sd.create_employees()
 
 importer.import_all()
